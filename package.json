@@ -1,0 +1,25 @@
+{
+  "name": "gitpilot",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "gss": "./dist/status.js",
+    "gcm": "./dist/commit.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "postbuild": "chmod +x dist/status.js dist/commit.js",
+    "prepare": "tsup",
+    "dev:status": "tsx src/status.ts",
+    "dev:commit": "tsx src/commit.ts"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.0",
+    "picocolors": "^1.1.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
