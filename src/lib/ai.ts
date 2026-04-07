@@ -23,7 +23,7 @@ export function isCodexAvailable(): boolean {
 function runCodex(prompt: string): Promise<string | null> {
   return new Promise((resolve) => {
     const proc = spawn('codex', ['exec', '--model', 'gpt-5.4-mini', '--json', prompt], {
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
     let output = '';

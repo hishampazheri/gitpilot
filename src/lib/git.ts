@@ -174,26 +174,16 @@ export function commitChanges(message: string): string {
 }
 
 export function pushToRemote(): void {
-  // Stash any unstaged/untracked changes so pull --rebase can run cleanly
-  const stash = spawnSync('git', ['stash', '--include-untracked'], {
-    encoding: 'utf-8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
-  const didStash = stash.status === 0 && !(stash.stdout || '').includes('No local changes');
-
-  // Pull with rebase to avoid divergence (e.g. CI pushed release commits)
-  const pull = spawnSync('git', ['pull', '--rebase'], {
+  // Use git's built-in autoStash so stash+rebase+pop is atomic —
+  // avoids race conditions when agents modify files concurrently.
+  const pull = spawnSync('git', ['-c', 'rebase.autoStash=true', 'pull', '--rebase'], {
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   if (pull.status !== 0) {
     spawnSync('git', ['rebase', '--abort'], { stdio: 'pipe' });
-    if (didStash) spawnSync('git', ['stash', 'pop'], { stdio: 'pipe' });
     throw new Error(`Pull --rebase failed (possible conflicts):\n${pull.stderr || pull.stdout}`);
   }
-
-  // Restore stashed changes
-  if (didStash) spawnSync('git', ['stash', 'pop'], { stdio: 'pipe' });
 
   const result = spawnSync('git', ['push'], {
     encoding: 'utf-8',
