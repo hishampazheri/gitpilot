@@ -174,31 +174,35 @@ export function commitChanges(message: string): string {
 }
 
 export function pushToRemote(): void {
-  // Use git's built-in autoStash so stash+rebase+pop is atomic —
-  // avoids race conditions when agents modify files concurrently.
-  const pull = spawnSync('git', ['-c', 'rebase.autoStash=true', 'pull', '--rebase'], {
+  const branch = getBranch();
+
+  // Check if the branch has a remote upstream
+  const hasUpstream = spawnSync('git', ['rev-parse', '--abbrev-ref', `${branch}@{upstream}`], {
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
-  });
-  if (pull.status !== 0) {
-    spawnSync('git', ['rebase', '--abort'], { stdio: 'pipe' });
-    throw new Error(`Pull --rebase failed (possible conflicts):\n${pull.stderr || pull.stdout}`);
+  }).status === 0;
+
+  if (hasUpstream) {
+    // Use git's built-in autoStash so stash+rebase+pop is atomic —
+    // avoids race conditions when agents modify files concurrently.
+    const pull = spawnSync('git', ['-c', 'rebase.autoStash=true', 'pull', '--rebase'], {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    if (pull.status !== 0) {
+      spawnSync('git', ['rebase', '--abort'], { stdio: 'pipe' });
+      throw new Error(`Pull --rebase failed (possible conflicts):\n${pull.stderr || pull.stdout}`);
+    }
   }
 
-  const result = spawnSync('git', ['push'], {
+  // Push — set upstream if needed
+  const pushArgs = hasUpstream ? ['push'] : ['push', '-u', 'origin', branch];
+  const result = spawnSync('git', pushArgs, {
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   if (result.status !== 0) {
-    // try setting upstream
-    const branch = getBranch();
-    const retry = spawnSync('git', ['push', '-u', 'origin', branch], {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    if (retry.status !== 0) {
-      throw new Error(retry.stderr || 'Push failed');
-    }
+    throw new Error(result.stderr || 'Push failed');
   }
 }
 
