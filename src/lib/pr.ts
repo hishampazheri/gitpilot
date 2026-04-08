@@ -9,11 +9,12 @@ export function isGhAvailable(): boolean {
   }
 }
 
-export function createPR(params: { title: string; body: string; base: string }): string {
+export function createPR(params: { title: string; body: string; base: string; head: string }): string {
   const result = spawnSync('gh', [
     'pr', 'create',
     '--title', params.title,
     '--base', params.base,
+    '--head', params.head,
     '--body', params.body,
   ], {
     encoding: 'utf-8',

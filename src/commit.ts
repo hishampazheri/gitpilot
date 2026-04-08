@@ -263,7 +263,7 @@ async function main() {
       const prSpinner = p.spinner();
       prSpinner.start('Creating PR...');
       try {
-        const prUrl = createPR({ title: prTitle, body: prBody, base: defaultBranch });
+        const prUrl = createPR({ title: prTitle, body: prBody, base: defaultBranch, head: branch });
         prSpinner.stop('PR created!');
         p.log.success(pc.cyan(prUrl));
 
