@@ -54,26 +54,29 @@ export function getStatus(): GitStatus {
   const branch = getBranch();
   const { ahead, behind } = getAheadBehind();
 
-  const output = execSync('git status --porcelain=v1', { encoding: 'utf-8' });
-  // Split first, then trim each line's trailing whitespace only — leading spaces are significant
-  const lines = output.split('\n').filter((l) => l.length > 0);
+  // -z gives NUL-terminated records with no quoting/escaping. For renames or
+  // copies the destination path is in the main record and the origin path
+  // follows as a separate NUL-terminated record we must skip.
+  const output = execSync('git status --porcelain=v1 -z', { encoding: 'utf-8' });
+  const records = output.split('\0');
 
   const staged: FileChange[] = [];
   const unstaged: FileChange[] = [];
   const untracked: string[] = [];
 
-  for (const line of lines) {
-    // Porcelain v1 format: XY PATH (or XY ORIG -> PATH for renames)
-    // X = index/staged status, Y = worktree status
-    const match = line.match(/^(.)(.) (.+)$/);
-    if (!match) continue;
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    // Format: "XY PATH" — X = index/staged status, Y = worktree status
+    if (record.length < 4) continue;
 
-    const [, x, y, rawFile] = match;
+    const x = record[0];
+    const y = record[1];
+    const file = record.slice(3);
 
-    // Git wraps paths with spaces/special chars in double quotes — strip them
-    const file = rawFile.startsWith('"') && rawFile.endsWith('"')
-      ? rawFile.slice(1, -1)
-      : rawFile;
+    // Renames/copies are followed by a NUL-terminated ORIG_PATH record — skip it
+    if (x === 'R' || x === 'C' || y === 'R' || y === 'C') {
+      i++;
+    }
 
     if (x === '?' && y === '?') {
       untracked.push(file);

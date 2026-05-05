@@ -88,11 +88,16 @@ async function main() {
   );
 
   // Map indices back to file paths
-  const selected = (selectedIndices as number[]).map((i) => allFiles[i].file);
   const selectedSet = new Set(selectedIndices as number[]);
 
-  // Stage all selected files (git add is idempotent on already-staged files)
-  stageFiles(selected);
+  // Only stage files that aren't already staged — re-running `git add` on a
+  // staged deletion fails ("pathspec did not match") because the path is gone
+  // from the worktree, and re-adding a staged rename's destination is wasted work.
+  const toStage = (selectedIndices as number[])
+    .map((i) => allFiles[i])
+    .filter((f) => !f.staged)
+    .map((f) => f.file);
+  if (toStage.length > 0) stageFiles(toStage);
 
   // Unstage any files that were previously staged but deselected
   const toUnstage = allFiles
